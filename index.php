@@ -4,15 +4,41 @@ include('db.php');
 
 use Stripe\Charge;
 use Stripe\Stripe;
+use Stripe\Coupon;
+
 
 Stripe::setApiKey('sk_test_51PYaxBKWQhATfha0Dl5Xd9dQgDjuY5qEZSavxrJuJpFkaol6dHwvjOuKCiKjICHr759YGqobPC48iUsnPs4xkhCK00SVRGxtbR');
-
+$amount = 40;
+    
 if (isset($_POST['stripeToken'])) {
 
     $token = $_POST['stripeToken'];
-    $amount = $_POST['amount'];
+    $coupon_code = $_POST['coupon_code']; 
+    $valid=false;
+ 
 
-  
+if(isset($coupon_code) && !empty($coupon_code)){
+    $coupon = Coupon::retrieve($coupon_code);
+    if($coupon->valid){
+    $amount = $amount - ($amount * $coupon->percent_off / 100);
+    $_POST['coupon_code']=null;
+    $valid=true;
+    }
+
+else{
+    
+    echo "<script>
+    alert('Coupon code is invalid');
+    window.location.href = 'index.php';
+    </script>";
+    $_POST['stripeToken']=null;
+    $_POST['coupon_code']=null;
+    exit();
+    
+}
+
+}
+
     
     try {
         
@@ -57,11 +83,28 @@ if (isset($_POST['stripeToken'])) {
 
     
     if ($paymentSuccess) {
+
+
+        echo"hey";
         $_POST['stripeToken']=null;
+        
+
+    if($valid){
+        echo"hey2";
+        echo "<script>
+                            alert('Coupon code is valid. You got " . $coupon->percent_off . "% off! Payment Successful!');
+                            window.location.href = 'index.php';
+                          </script>";
+        $valid=false;
+    }
+
+    else{
         echo "<script>
                 alert('Payment successful!');
                 window.location.href = 'index.php';
               </script>";
+    }
+
             exit();
 
     } else {
@@ -94,10 +137,12 @@ if (isset($_POST['stripeToken'])) {
             <div class="form-control"></div>
         </div>
         <div class="form-group">
-            <label for="amount">Amount (USD)</label>
-            <input type="number" class="form-control" id="amount" name="amount" required>
+            <label for="amount">Coupon-Code</label>
+            <input type="text" class="form-control" name="coupon_code" >
         </div>
-        <button class="btn btn-primary btn-block" type="submit">Submit Payment</button>
+
+        <button class="btn btn-primary btn-block" type="submit">Pay <?php echo $amount . "$" ?></button>
+    
     </form>
 </div>
 
